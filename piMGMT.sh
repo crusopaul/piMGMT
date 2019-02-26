@@ -145,13 +145,11 @@ getdnsInstall () {
 	sudo make install
 	cd ..
 	rm -rf getdns
-	touch .piMGMT
-	echo $newestVersion > ~/.piMGMT
 	dialog --msgbox "Getdns installed" 5 20
 }
 
 getdnsVersionCheck () {
-	currentVersion=$(cat .piMGMT)
+	currentVersion=$(pkg-config --modversion getdns)
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
 		sed "s/.*refs\/heads\///g" | \
 		sed "s/features.*//g" | \
