@@ -149,7 +149,7 @@ getdnsInstall () {
 }
 
 getdnsVersionCheck () {
-	currentVersion=$(pkg-config --modversion getdns)
+	currentVersion=$(pkg-config --modversion getdns | sed "s/-.*//")
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
 		sed "s/.*refs\/heads\///g" | \
 		sed "s/features.*//g" | \
