@@ -176,13 +176,9 @@ getdnsVersionCheck () {
 
 stubbyInstall () {
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/stubby.git | \
-		sed "s/.*0./0./g" | \
-		sed "s/\^{}//g" | \
-		sed "s/.*master//g" | \
-		sed "s/.*develop//g" | \
+		grep -Po "\d\.\d\.\d" | \
 		sort -hr | \
-		uniq | \
-		head -n 1)
+		head -n 1 )
 	git clone --branch release/$newestVersion https://github.com/getdnsapi/stubby.git
 	cd stubby
 	autoreconf -fi
@@ -240,13 +236,9 @@ stubbyInstall () {
 stubbyVersionCheck () {
 	currentVersion=$(stubby -V | sed "s/Stubby //")
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/stubby.git | \
-		sed "s/.*0./0./g" | \
-		sed "s/\^{}//g" | \
-		sed "s/.*master//g" | \
-		sed "s/.*develop//g" | \
+		grep -Po "\d\.\d\.\d" | \
 		sort -hr | \
-		uniq | \
-		head -n 1)
+		head -n 1 )
 	if [ ! $currentVersion = $newestVersion ]
 	then
 		dialog --yesno "Update available, would you like to update?" 5 48
