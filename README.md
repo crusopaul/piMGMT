@@ -4,6 +4,7 @@ A script I wrote to easily reconfigure pi-hole and stubby on my raspberry pi (in
 # Usage
 piMGMT.sh uses dialog, as opposed whiptail, for its text-based GUI. To get it running:
 ````
+sudo apt-get update
 sudo apt-get install dialog
 wget https://github.com/crusopaul/piMGMT/raw/master/piMGMT.sh
 chmod +x piMGMT.sh
