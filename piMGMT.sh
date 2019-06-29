@@ -120,7 +120,7 @@ piholeManage () {
 
 getAptDependencies () {
 	sudo apt update
-	sudo apt install build-essential libssl-dev libtool m4 autoconf libev4 libyaml-dev libidn11 libuv1 libevent-core-2.0.5
+	sudo apt install build-essential libssl-dev libtool m4 autoconf libev4 libyaml-dev libidn11 libuv1 libevent-core-2.1.6
 	dialog --msgbox "Dependencies fetched" 5 24
 }
 
