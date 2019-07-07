@@ -8,6 +8,10 @@ piholeInstall () {
 	if [ -z "$(whereis pihole | sed "s/pihole://")" ]
 	then
 		curl -sSL https://install.pi-hole.net | bash
+		if [ ! -e /usr/share/lighttpd/create-mime.assign.pl ]
+		then
+			sudo ln -s /usr/share/lighttpd/create-mime.conf.pl /usr/share/lighttpd/create-mime.assign.pl
+		fi
 	else
 		dialog --msgbox "Pi-hole is already installed" 5 32
 	fi
@@ -29,7 +33,7 @@ piholeVersionCheck () {
 	then
 		piholeNeedsUpdate=true
 	fi
-	
+
 	adminNeedsUpdate=false
 	versionString=$(pihole -v)
 	curAdminVersion=$(echo "$versionString" | \
@@ -45,7 +49,7 @@ piholeVersionCheck () {
 	then
 		adminNeedsUpdate=true
 	fi
-	
+
 	ftlNeedsUpdate=false
 	versionString=$(pihole -v)
 	curFTLVersion=$(echo "$versionString" | \
@@ -61,7 +65,7 @@ piholeVersionCheck () {
 	then
 		ftlNeedsUpdate=true
 	fi
-	
+
 	if [[ $piholeNeedsUpdate = "true" || $adminNeedsUpdate = "true" || $ftlNeedsUpdate = "true" ]]
 	then
 		dialog --yesno "Updates available, would you like to update?" 5 48
@@ -120,20 +124,15 @@ piholeManage () {
 
 getAptDependencies () {
 	sudo apt update
-	sudo apt install build-essential libssl-dev libtool m4 autoconf libev4 libyaml-dev libidn11 libuv1 libevent-core-2.1.6
+	sudo apt install build-essential libssl-dev libtool m4 autoconf libev4 libyaml-dev libidn11 libuv1 \
+	$(apt-cache search libevent-core | grep -Po "libevent-core-\d\.\d-\d")
 	dialog --msgbox "Dependencies fetched" 5 24
 }
 
 getdnsInstall () {
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
-		sed "s/.*refs\/heads\///g" | \
-		sed "s/features.*//g" | \
-		sed "s/bugfix.*//g" | \
-		sed "s/devel.*//g" | \
-		sed "s/master//g" | \
-		sed "s/release\///g" | \
+		grep -Po "\d\.\d\.\d([A-z]\d)?" | \
 		sort -hr | \
-		uniq | \
 		head -n 1)
 	git clone --branch release/$newestVersion https://github.com/getdnsapi/getdns.git
 	cd getdns
@@ -151,14 +150,8 @@ getdnsInstall () {
 getdnsVersionCheck () {
 	currentVersion=$(pkg-config --modversion getdns | sed "s/-.*//")
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
-		sed "s/.*refs\/heads\///g" | \
-		sed "s/features.*//g" | \
-		sed "s/bugfix.*//g" | \
-		sed "s/devel.*//g" | \
-		sed "s/master//g" | \
-		sed "s/release\///g" | \
+		grep -Po "\d\.\d\.\d([A-z]\d)?" | \
 		sort -hr | \
-		uniq | \
 		head -n 1)
 	if [ ! $currentVersion = $newestVersion ]
 	then
@@ -185,7 +178,7 @@ stubbyInstall () {
 	./configure --prefix=/usr/local
 	make
 	sudo make install
-	
+
 	if [ ! -e /etc/stubby.yml ]
 	then
 		trimLineNumber=$(cat stubby.yml.example | \
@@ -197,13 +190,14 @@ stubbyInstall () {
 		listenAddressLine=$(cat stubby.yml.example | \
 			grep -n "^listen_addresses:" | \
 			sed "s/:.*//" | \
-			sort -hr | \
+			sort -h | \
 			head -n 1)
 		echo -e "$(cat stubby.yml.example | head -n $listenAddressLine) \
-			\n$(cat stubby.yml.example | tail -n +$(expr $listenAddressLine + 3))" > stubby.yml.example
+			\n$(cat stubby.yml.example | tail -n +$(expr $listenAddressLine + 2))" > stubby.yml.example
 		sudo install -Dm644 stubby.yml.example /etc/stubby.yml
+		dialog --msgbox "Remember to set stubby's listen address." 5 44
 	fi
-	
+
 	if [ ! -e /lib/systemd/system/stubby.service ]
 	then
 		cd systemd
@@ -220,12 +214,12 @@ stubbyInstall () {
 		sudo install -Dm644 stubby.service /lib/systemd/system/stubby.service
 		cd ..
 	fi
-	
+
 	if [ ! -e /usr/lib/tmpfiles.d/stubby.conf ]
 	then
 		sudo install -Dm644 systemd/stubby.conf /usr/lib/tmpfiles.d/stubby.conf
 	fi
-	
+
 	cd ..
 	rm -rf stubby/
 	sudo ldconfig -v
@@ -268,7 +262,7 @@ stubbyChangeDNS () {
 			dialog --msgbox "A default DNS nickname is required" 5 39
 		fi
 	done
-	
+
 	dnsEntryLineNumber=$(cat /etc/stubby.yml | \
 		grep -n "^## $dnsNickname ##" | \
 		sed "s/:.*//")
@@ -292,7 +286,7 @@ stubbyChangeDNS () {
 			return 0
 		fi
 	fi
-	
+
 	dnsIP=""
 	while [ -z $dnsIP]
 	do
@@ -302,7 +296,7 @@ stubbyChangeDNS () {
 			dialog --msgbox "A default upstream DNS is required" 5 38
 		fi
 	done
-	
+
 	dnsAuthName=""
 	while [ -z $dnsAuthName]
 	do
@@ -312,7 +306,7 @@ stubbyChangeDNS () {
 			dialog --msgbox "A default auth_name is required" 5 38
 		fi
 	done
-	
+
 	dialog --yesno "Does the DNS have a tls_pubkey_pinset" 5 41
 	hasPubKey=$?
 	digest=""
@@ -336,7 +330,7 @@ stubbyChangeDNS () {
 			fi
 		done
 	fi
-	
+
 	if [ -z "$(cat /etc/stubby.yml | grep "^## $dnsNickname ##")" ]
 	then
 		sudo dnsNickname="$dnsNickname" bash -c 'echo "## $dnsNickname ##" >> /etc/stubby.yml'
@@ -361,7 +355,7 @@ stubbyChangeDNS () {
 		else
 			sudo sed -i "${dnsEntryLineNumber}s/^#  - address_data:.*/  - address_data: $dnsIP/" /etc/stubby.yml
 		fi
-		
+
 		dnsEntryLineNumber=$(expr $dnsEntryLineNumber + 1)
 		curLine=$(cat /etc/stubby.yml | \
 			head -n $dnsEntryLineNumber | \
@@ -374,7 +368,7 @@ stubbyChangeDNS () {
 		else
 			sudo sed -i "${dnsEntryLineNumber}s/^#    tls_auth_name:.*/    tls_auth_name: \"$dnsAuthName\"/" /etc/stubby.yml
 		fi
-		
+
 		if [ $hasPubKey -eq 0 ]
 		then
 			dnsEntryLineNumber=$(expr $dnsEntryLineNumber + 1)
@@ -387,7 +381,7 @@ stubbyChangeDNS () {
 					\n$(echo "    tls_pubkey_pinset:") \
 					\n$(cat /etc/stubby.yml | tail -n +$dnsEntryLineNumber)" > /etc/stubby.yml'
 			fi
-			
+
 			dnsEntryLineNumber=$(expr $dnsEntryLineNumber + 1)
 			curLine=$(cat /etc/stubby.yml | \
 				head -n $dnsEntryLineNumber | \
@@ -400,7 +394,7 @@ stubbyChangeDNS () {
 			else
 				sudo sed -i "${dnsEntryLineNumber}s/^#      - digest:.*/      - digest: $digest/" /etc/stubby.yml
 			fi
-			
+
 			dnsEntryLineNumber=$(expr $dnsEntryLineNumber + 1)
 			curLine=$(cat /etc/stubby.yml | \
 				head -n $dnsEntryLineNumber | \
@@ -429,7 +423,7 @@ stubbyChangeListenAddress () {
 			dialog --msgbox "A default listen address is required" 5 40
 		fi
 	done
-	
+
 	listenAddressLine=$(cat /etc/stubby.yml | \
 		grep -n "^listen_addresses:" | \
 		sed "s/:.*//" | \
