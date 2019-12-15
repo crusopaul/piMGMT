@@ -131,10 +131,10 @@ getAptDependencies () {
 
 getdnsInstall () {
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
-		grep -Po "\d\.\d\.\d([A-z]\d)?" | \
-		sort -hr | \
+		grep -Po "release/\d.*" | \
+		sort -Vr | \
 		head -n 1)
-	git clone --branch release/$newestVersion https://github.com/getdnsapi/getdns.git
+	git clone --branch $newestVersion https://github.com/getdnsapi/getdns.git
 	cd getdns
 	git submodule update --init
 	libtoolize -ci
@@ -150,8 +150,9 @@ getdnsInstall () {
 getdnsVersionCheck () {
 	currentVersion=$(pkg-config --modversion getdns | sed "s/-.*//")
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/getdns.git | \
-		grep -Po "\d\.\d\.\d([A-z]\d)?" | \
-		sort -hr | \
+		grep -Po "release/\d.*" | \
+		sort -Vr | \
+		sed "s/release\///g" | \
 		head -n 1)
 	if [ ! $currentVersion = $newestVersion ]
 	then
@@ -169,10 +170,10 @@ getdnsVersionCheck () {
 
 stubbyInstall () {
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/stubby.git | \
-		grep -Po "\d\.\d\.\d" | \
-		sort -hr | \
+		grep -Po "release/\d.*" | \
+		sort -Vr | \
 		head -n 1 )
-	git clone --branch release/$newestVersion https://github.com/getdnsapi/stubby.git
+	git clone --branch $newestVersion https://github.com/getdnsapi/stubby.git
 	cd stubby
 	autoreconf -fi
 	./configure --prefix=/usr/local
@@ -230,8 +231,9 @@ stubbyInstall () {
 stubbyVersionCheck () {
 	currentVersion=$(stubby -V | sed "s/Stubby //")
 	newestVersion=$(git ls-remote -h https://github.com/getdnsapi/stubby.git | \
-		grep -Po "\d\.\d\.\d" | \
-		sort -hr | \
+		grep -Po "release/\d.*" | \
+		sort -Vr | \
+		sed "s/release\///g" | \
 		head -n 1 )
 	if [ ! $currentVersion = $newestVersion ]
 	then
